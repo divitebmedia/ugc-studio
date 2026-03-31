@@ -5,7 +5,7 @@ export async function generateAdScript(product: Product, settings: AppSettings) 
     throw new Error('Gemini API key not set. Go to Settings and add your Google AI API key.');
   }
 
-  const prompt = `You are a UGC (user-generated content) TikTok ad scriptwriter. Write a punchy, authentic, conversational script for a 20-30 second TikTok video selling a product.
+  const prompt = `You are a UGC (user-generated content) TikTok ad scriptwriter. Write a punchy, authentic, conversational script for a 25-30 second TikTok video selling a product.
 
 Product: ${product.name}
 Description: ${product.description}
@@ -18,10 +18,11 @@ Call to action: ${settings.defaultCta}
 Rules:
 - Sound like a real person talking to their phone, NOT a corporate ad
 - Start with a strong hook that stops the scroll (use the hook provided as inspiration)
-- Keep it under 80 words (20-30 seconds spoken)
-- One clear problem → solution → CTA structure
+- Target exactly 100-120 words (25-30 seconds spoken at natural pace)
+- Structure: Hook (5s) → Problem/relate (5s) → Product reveal + benefits (12s) → CTA (5s)
 - No emojis, no hashtags — just the spoken script
 - End with the CTA naturally woven in
+- Use natural pauses and conversational rhythm — write how people actually talk
 
 Output ONLY the spoken script. No stage directions, no labels, no extra text.`;
 
