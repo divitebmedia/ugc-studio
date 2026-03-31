@@ -154,7 +154,7 @@ async function hedraCreateAsset(apiKey: string, type: 'image' | 'audio'): Promis
 
 async function hedraUploadAsset(apiKey: string, assetId: string, buffer: Buffer, filename: string, mime: string) {
   const form = new FormData();
-  form.append('file', new Blob([buffer], { type: mime }), filename);
+  form.append('file', new Blob([new Uint8Array(buffer)], { type: mime }), filename);
   const res = await fetch(`${HEDRA_BASE}/assets/${assetId}/upload`, {
     method: 'POST',
     headers: { 'X-API-Key': apiKey },
