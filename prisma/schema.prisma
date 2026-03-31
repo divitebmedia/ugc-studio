@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AssetType {
+  PRODUCT_IMAGE
+  GENERATED_IMAGE
+  GENERATED_VIDEO
+  VOICEOVER
+}
+
+enum JobType {
+  SCRIPT
+  IMAGE
+  VOICEOVER
+  VIDEO
+}
+
+enum JobStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  settings     AppSettings[]
+  products     Product[]
+  jobs         Job[]
+}
+
+model AppSettings {
+  id                 String   @id @default(cuid())
+  userId             String
+  adminEmail         String
+  brandVoice         String   @default("Casual, direct, conversion-focused")
+  defaultCta         String   @default("Shop now")
+  textProvider       String   @default("mock")
+  textApiKey         String   @default("")
+  textModel          String   @default("demo-text-model")
+  imageProvider      String   @default("mock")
+  imageApiKey        String   @default("")
+  imageModel         String   @default("demo-image-model")
+  videoProvider      String   @default("kling")
+  videoApiKey        String   @default("")
+  videoModel         String   @default("kling-v1-6")
+  elevenLabsApiKey   String   @default("")
+  voiceId            String   @default("21m00Tcm4TlvDq8ikWAM")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  description    String
+  targetAudience String
+  hook           String
+  benefits       String
+  status         String   @default("draft")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets         Asset[]
+  jobs           Job[]
+}
+
+model Asset {
+  id          String    @id @default(cuid())
+  productId   String
+  type        AssetType
+  filename    String
+  mimeType    String
+  path        String
+  url         String
+  prompt      String?
+  providerRef String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  userId      String
+  productId   String
+  type        JobType
+  status      JobStatus @default(PENDING)
+  title       String
+  prompt      String?
+  output      String?
+  provider    String?
+  model       String?
+  providerRef String?
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
