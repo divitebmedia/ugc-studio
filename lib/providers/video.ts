@@ -186,10 +186,19 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type: 'video',
-      video: {
-        portraitAssetId: imageAssetId,
-        audioAssetId: audioAssetId,
-        aspectRatio: '9:16'
+      // Avatar model = long-form lip sync | Omnia = full-body up to 8s
+      ai_model_id: settings.videoModel === 'omnia'
+        ? 'ab372b84-432f-44f5-bacc-c2542465f712'
+        : '26f0fc66-152b-40ab-abed-76c43df99bc8',
+      start_keyframe_id: imageAssetId,
+      audio_id: audioAssetId,
+      generated_video_inputs: {
+        text_prompt: settings.videoModel === 'omnia'
+          ? 'A person gesturing expressively while speaking, energetic UGC style'
+          : 'A person speaking naturally to the camera, authentic UGC style',
+        aspect_ratio: '9:16',
+        resolution: '720p',
+        duration_ms: settings.videoModel === 'omnia' ? 8000 : 60000
       }
     })
   });

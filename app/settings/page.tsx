@@ -118,9 +118,14 @@ export default async function SettingsPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Kling model <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span></label>
-                <input className="input" name="videoModel" defaultValue={s?.videoModel || ''} placeholder="kling-v2-1" />
-                <span className="form-hint">Only applies to Kling. Recommended: kling-v2-1 (better quality). Leave blank for default.</span>
+                <label className="form-label">Hedra model</label>
+                <select name="videoModel" defaultValue={s?.videoModel || 'avatar'} className="input">
+                  <option value="avatar">Avatar — long-form lip sync, full video length (recommended)</option>
+                  <option value="omnia">Omnia — full-body movement, max 8s per clip</option>
+                  <option value="kling-v2-1">Kling v2-1 — image-to-video (if using Kling provider)</option>
+                  <option value="kling-v1-6">Kling v1-6 — image-to-video budget (if using Kling provider)</option>
+                </select>
+                <span className="form-hint">Avatar is best for UGC ads. Omnia gives full-body but is limited to 8s.</span>
               </div>
             </div>
           </div>
