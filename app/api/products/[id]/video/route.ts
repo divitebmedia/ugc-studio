@@ -1,8 +1,20 @@
 import { redirect } from 'next/navigation';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 import { requireAuth } from '@/lib/auth';
 import { ensureAdminUser } from '@/lib/bootstrap';
 import { prisma } from '@/lib/prisma';
 import { submitVideoJob } from '@/lib/providers/video';
+
+async function localUrlToBase64(url: string): Promise<string> {
+  // url is like /uploads/filename.png — read from disk, skip HTTP entirely
+  const rel = url.startsWith('/') ? url.slice(1) : url;
+  const filePath = join(process.cwd(), 'public', rel);
+  const buf = await readFile(filePath);
+  const ext = rel.split('.').pop()?.toLowerCase() ?? 'png';
+  const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+  return `data:${mime};base64,${buf.toString('base64')}`;
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
@@ -30,9 +42,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const toAbsolute = (url?: string | null) =>
       url ? (url.startsWith('http') ? url : `${origin}${url}`) : undefined;
 
+    const imageBase64 = ugcImage?.url ? await localUrlToBase64(ugcImage.url) : '';
+
     const result = await submitVideoJob(product, settings, {
       script,
-      imageUrl: toAbsolute(ugcImage?.url) || '',
+      imageUrl: imageBase64,
       audioUrl: toAbsolute(voiceAsset?.url)
     });
     taskId = result.taskId;
