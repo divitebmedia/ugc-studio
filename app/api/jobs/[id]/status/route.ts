@@ -17,7 +17,6 @@ async function downloadFile(url: string, dest: string) {
 }
 
 async function ffmpegConcat(clipPaths: string[], outputPath: string) {
-  // Build a concat list file
   const listPath = outputPath + '.txt';
   const listContent = clipPaths.map(p => `file '${p}'`).join('\n');
   await writeFile(listPath, listContent);
@@ -27,11 +26,19 @@ async function ffmpegConcat(clipPaths: string[], outputPath: string) {
     { timeout: 120000 }
   );
 
-  // Clean up temp files
   await Promise.allSettled([
     unlink(listPath),
     ...clipPaths.map(p => unlink(p))
   ]);
+}
+
+async function ffmpegMergeAudio(videoPath: string, audioPath: string, outputPath: string) {
+  // Mux voiceover into video; -shortest stops at whichever stream ends first
+  await execAsync(
+    `ffmpeg -y -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -b:a 192k -shortest "${outputPath}"`,
+    { timeout: 120000 }
+  );
+  await unlink(videoPath); // remove the silent video
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -81,29 +88,46 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ status: 'FAILED' });
     }
 
-    // ── Succeeded — download + optional FFmpeg concat ────────────────────────
+    // ── Succeeded — download + concat + merge audio ──────────────────────────
     const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    const finalFilename = `video-${job.productId}-${Date.now()}.mp4`;
+    const ts = Date.now();
+    const finalFilename = `video-${job.productId}-${ts}.mp4`;
     const finalPath = join(uploadsDir, finalFilename);
     const localUrl = `/uploads/${finalFilename}`;
 
     try {
       const remoteUrls = pollResult.videoUrls ?? (pollResult.videoUrl ? [pollResult.videoUrl] : []);
 
+      // Step 1: download clips + concat (or single download) → silent video
+      const silentPath = join(uploadsDir, `silent-${job.productId}-${ts}.mp4`);
+
       if (remoteUrls.length > 1) {
-        // Download all clips then FFmpeg concat
         const clipPaths = await Promise.all(
           remoteUrls.map(async (url, i) => {
-            const clipPath = join(uploadsDir, `clip-${job.productId}-${Date.now()}-${i}.mp4`);
+            const clipPath = join(uploadsDir, `clip-${job.productId}-${ts}-${i}.mp4`);
             await downloadFile(url, clipPath);
             return clipPath;
           })
         );
-        await ffmpegConcat(clipPaths, finalPath);
+        await ffmpegConcat(clipPaths, silentPath);
       } else if (remoteUrls.length === 1) {
-        await downloadFile(remoteUrls[0], finalPath);
+        await downloadFile(remoteUrls[0], silentPath);
       } else {
         throw new Error('No video URLs returned from provider');
+      }
+
+      // Step 2: merge voiceover if available
+      const voiceAsset = await prisma.asset.findFirst({
+        where: { productId: job.productId, type: 'VOICEOVER' },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (voiceAsset?.path) {
+        await ffmpegMergeAudio(silentPath, voiceAsset.path, finalPath);
+      } else {
+        // No voiceover — just rename silent video to final
+        const { rename } = await import('fs/promises');
+        await rename(silentPath, finalPath);
       }
 
       await prisma.asset.create({
