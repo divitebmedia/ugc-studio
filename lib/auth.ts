@@ -18,7 +18,10 @@ export function buildSessionValue(email: string) {
 
 export function isValidSession(value?: string | null) {
   if (!value) return false;
-  const [email, sig] = value.split('.');
+  const lastDot = value.lastIndexOf('.');
+  if (lastDot === -1) return false;
+  const email = value.slice(0, lastDot);
+  const sig = value.slice(lastDot + 1);
   return !!email && sig === sign(email);
 }
 
