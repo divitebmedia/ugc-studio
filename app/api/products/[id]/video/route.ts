@@ -11,9 +11,7 @@ async function localUrlToBase64(url: string): Promise<string> {
   const rel = url.startsWith('/') ? url.slice(1) : url;
   const filePath = join(process.cwd(), 'public', rel);
   const buf = await readFile(filePath);
-  const ext = rel.split('.').pop()?.toLowerCase() ?? 'png';
-  const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
-  return `data:${mime};base64,${buf.toString('base64')}`;
+  return buf.toString('base64');
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
