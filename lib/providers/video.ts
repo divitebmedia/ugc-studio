@@ -17,6 +17,14 @@ function klingJWT(keyId: string, keySecret: string) {
 }
 
 // ── Kling ─────────────────────────────────────────────────────────────────────
+async function toBase64DataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image for Kling: ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const mime = res.headers.get('content-type') || 'image/png';
+  return `data:${mime};base64,${buffer.toString('base64')}`;
+}
+
 async function submitKling(settings: AppSettings, imageUrl: string, script: string) {
   const [keyId, keySecret] = settings.videoApiKey.split(':');
   if (!keyId || !keySecret) {
@@ -25,6 +33,8 @@ async function submitKling(settings: AppSettings, imageUrl: string, script: stri
 
   const model = settings.videoModel || 'kling-v1-6';
   const token = klingJWT(keyId, keySecret);
+
+  const imageBase64 = await toBase64DataUrl(imageUrl);
 
   const body: Record<string, unknown> = {
     model_name: model,
@@ -36,7 +46,7 @@ async function submitKling(settings: AppSettings, imageUrl: string, script: stri
     duration: '10'
   };
 
-  body.image = imageUrl;
+  body.image = imageBase64;
 
   const res = await fetch('https://api.klingai.com/v1/videos/image2video', {
     method: 'POST',
