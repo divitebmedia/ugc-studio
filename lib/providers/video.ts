@@ -142,10 +142,11 @@ export async function pollRunway(taskId: string, apiKey: string): Promise<{ stat
 const HEDRA_BASE = 'https://api.hedra.com/web-app/public';
 
 async function hedraCreateAsset(apiKey: string, type: 'image' | 'audio'): Promise<string> {
+  const name = type === 'image' ? 'portrait.png' : 'voice.mp3';
   const res = await fetch(`${HEDRA_BASE}/assets`, {
     method: 'POST',
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type })
+    body: JSON.stringify({ type, name })
   });
   if (!res.ok) throw new Error(`Hedra create asset (${type}) error ${res.status}: ${await res.text()}`);
   const data = await res.json();
