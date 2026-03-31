@@ -4,10 +4,11 @@ import { ensureAdminUser } from '@/lib/bootstrap';
 import { prisma } from '@/lib/prisma';
 import { submitVideoJob } from '@/lib/providers/video';
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
   const user = await ensureAdminUser();
   const { id } = await params;
+  const origin = new URL(request.url).origin;
 
   const [product, settings, latestScript] = await Promise.all([
     prisma.product.findFirst({ where: { id, userId: user.id }, include: { assets: { orderBy: { createdAt: 'desc' } } } }),
@@ -26,10 +27,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let errorMsg = '';
 
   try {
+    const toAbsolute = (url?: string | null) =>
+      url ? (url.startsWith('http') ? url : `${origin}${url}`) : undefined;
+
     const result = await submitVideoJob(product, settings, {
       script,
-      imageUrl: ugcImage?.url || '',
-      audioUrl: voiceAsset?.url
+      imageUrl: toAbsolute(ugcImage?.url) || '',
+      audioUrl: toAbsolute(voiceAsset?.url)
     });
     taskId = result.taskId;
   } catch (err) {

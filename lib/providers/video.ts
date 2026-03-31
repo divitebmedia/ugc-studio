@@ -36,10 +36,6 @@ async function submitKling(settings: AppSettings, imageUrl: string, script: stri
     duration: '10'
   };
 
-  // image must be a public URL for Kling
-  if (imageUrl.startsWith('/')) {
-    throw new Error('Image URL must be a public URL for Kling. Deploy your app or use a public image host.');
-  }
   body.image = imageUrl;
 
   const res = await fetch('https://api.klingai.com/v1/videos/image2video', {
