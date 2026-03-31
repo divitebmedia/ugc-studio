@@ -186,20 +186,18 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type: 'video',
-      video: {
-        ai_model_id: settings.videoModel === 'omnia'
-          ? 'ab372b84-432f-44f5-bacc-c2542465f712'
-          : '26f0fc66-152b-40ab-abed-76c43df99bc8',
-        start_keyframe_id: imageAssetId,
-        audio_id: audioAssetId,
-        generated_video_inputs: {
-          text_prompt: settings.videoModel === 'omnia'
-            ? 'A person gesturing expressively while speaking, energetic UGC style'
-            : 'A person speaking naturally to the camera, authentic UGC style',
-          aspect_ratio: '9:16',
-          resolution: '720p',
-          duration_ms: settings.videoModel === 'omnia' ? 8000 : 60000
-        }
+      ai_model_id: settings.videoModel === 'omnia'
+        ? 'ab372b84-432f-44f5-bacc-c2542465f712'
+        : '26f0fc66-152b-40ab-abed-76c43df99bc8',
+      start_keyframe_id: imageAssetId,
+      audio_id: audioAssetId,
+      generated_video_inputs: {
+        text_prompt: settings.videoModel === 'omnia'
+          ? 'A person gesturing expressively while speaking, energetic UGC style'
+          : 'A person speaking naturally to the camera, authentic UGC style',
+        aspect_ratio: '9:16',
+        resolution: '720p',
+        duration_ms: settings.videoModel === 'omnia' ? 8000 : 60000
       }
     })
   });
@@ -217,7 +215,24 @@ export async function pollHedra(generationId: string, apiKey: string): Promise<{
   const data = await res.json();
   const s = (data.status || data.state || '').toLowerCase();
 
-  if (s === 'completed' || s === 'succeeded') return { status: 'SUCCEEDED', videoUrl: data.videoUrl || data.video_url || data.url };
+  if (s === 'complete' || s === 'completed' || s === 'succeeded') {
+    // Hedra returns asset_id on completion — fetch the download URL
+    const assetId = data.asset_id || data.assetId;
+    if (assetId) {
+      const assetRes = await fetch(`${HEDRA_BASE}/assets/${assetId}`, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      if (assetRes.ok) {
+        const asset = await assetRes.json();
+        const videoUrl = asset.url || asset.download_url || asset.videoUrl;
+        if (videoUrl) return { status: 'SUCCEEDED', videoUrl };
+      }
+    }
+    // Fallback: try direct url fields on the status response
+    const videoUrl = data.url || data.videoUrl || data.video_url;
+    if (videoUrl) return { status: 'SUCCEEDED', videoUrl };
+    return { status: 'FAILED' };
+  }
   if (s === 'failed' || s === 'error') return { status: 'FAILED' };
   return { status: 'PENDING' };
 }
