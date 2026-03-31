@@ -185,6 +185,7 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
     method: 'POST',
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      type: 'avatar',
       portraitAssetId: imageAssetId,
       audioAssetId: audioAssetId,
       aspectRatio: '9:16'
