@@ -1,5 +1,19 @@
 import type { AppSettings, Product } from '@prisma/client';
 import { createHmac } from 'crypto';
+import { execSync } from 'child_process';
+
+function getAudioDurationMs(audioPath: string): number {
+  try {
+    const out = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`,
+      { timeout: 10000 }
+    ).toString().trim();
+    const seconds = parseFloat(out);
+    return Math.ceil(seconds * 1000);
+  } catch {
+    return 35000; // fallback 35s
+  }
+}
 
 // ── Kling JWT auth ────────────────────────────────────────────────────────────
 function b64url(str: string) {
@@ -180,7 +194,11 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
   const audioBuffer = await readFile(audioPath);
   await hedraUploadAsset(apiKey, audioAssetId, audioBuffer, 'voice.mp3', 'audio/mpeg');
 
-  // 3. Generate talking head video
+  // 3. Generate talking head video — match duration to actual audio length
+  const durationMs = settings.videoModel === 'omnia'
+    ? 8000
+    : getAudioDurationMs(audioPath);
+
   const genRes = await fetch(`${HEDRA_BASE}/generations`, {
     method: 'POST',
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
@@ -197,7 +215,7 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
           : 'A person speaking naturally to the camera, authentic UGC style',
         aspect_ratio: '9:16',
         resolution: '720p',
-        duration_ms: settings.videoModel === 'omnia' ? 8000 : 60000
+        duration_ms: durationMs
       }
     })
   });
