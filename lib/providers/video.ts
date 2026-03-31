@@ -139,45 +139,61 @@ export async function pollRunway(taskId: string, apiKey: string): Promise<{ stat
 }
 
 // ── Hedra (talking head: image + audio → video) ───────────────────────────────
-async function submitHedra(settings: AppSettings, imageUrl: string, audioUrl: string) {
-  if (!settings.videoApiKey) throw new Error('Hedra API key not set.');
+async function submitHedra(settings: AppSettings, imageBase64: string, audioPath: string): Promise<string> {
+  const apiKey = (settings as AppSettings & { hedraApiKey?: string }).hedraApiKey || settings.videoApiKey;
+  if (!apiKey) throw new Error('Hedra API key not set. Add it in Settings → Hedra API Key.');
 
-  // For Hedra we need to provide public URLs for both image and audio
-  const res = await fetch('https://mercury.dev.dream-ai.com/api/v1/characters', {
+  const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json' };
+  const base = 'https://api.hedra.com';
+
+  // 1. Upload image
+  const imgRes = await fetch(`${base}/v1/portrait`, {
     method: 'POST',
-    headers: {
-      'X-API-Key': settings.videoApiKey,
-      'Content-Type': 'application/json'
-    },
+    headers,
+    body: JSON.stringify({ data: imageBase64 })
+  });
+  if (!imgRes.ok) throw new Error(`Hedra image upload error ${imgRes.status}: ${await imgRes.text()}`);
+  const { id: portraitId } = await imgRes.json();
+
+  // 2. Upload audio
+  const { readFile } = await import('fs/promises');
+  const audioBuffer = await readFile(audioPath);
+  const audioBase64 = audioBuffer.toString('base64');
+
+  const audRes = await fetch(`${base}/v1/audio`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ data: audioBase64 })
+  });
+  if (!audRes.ok) throw new Error(`Hedra audio upload error ${audRes.status}: ${await audRes.text()}`);
+  const { id: audioId } = await audRes.json();
+
+  // 3. Create character video
+  const genRes = await fetch(`${base}/v1/characters`, {
+    method: 'POST',
+    headers,
     body: JSON.stringify({
-      avatar_image_input: { image_source_type: 'url', url: imageUrl },
-      audio_source: 'audio',
-      voice_url: audioUrl,
+      portrait_id: portraitId,
+      audio_id: audioId,
       aspect_ratio: '9:16'
     })
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Hedra API error ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-  return (data.jobId || data.project_id) as string;
+  if (!genRes.ok) throw new Error(`Hedra generate error ${genRes.status}: ${await genRes.text()}`);
+  const { id: jobId } = await genRes.json();
+  return jobId as string;
 }
 
 export async function pollHedra(taskId: string, apiKey: string): Promise<{ status: string; videoUrl?: string; videoUrls?: string[] }> {
-  const res = await fetch(`https://mercury.dev.dream-ai.com/api/v1/projects/${taskId}`, {
+  const res = await fetch(`https://api.hedra.com/v1/characters/${taskId}`, {
     headers: { 'X-API-Key': apiKey }
   });
 
   if (!res.ok) throw new Error(`Hedra poll error ${res.status}`);
   const data = await res.json();
+  const s = (data.status || '').toLowerCase();
 
-  if (data.status === 'Completed' || data.status === 'completed') {
-    return { status: 'SUCCEEDED', videoUrl: data.video_url || data.videoUrl };
-  }
-  if (data.status === 'Failed' || data.status === 'failed') return { status: 'FAILED' };
+  if (s === 'completed') return { status: 'SUCCEEDED', videoUrl: data.video_url };
+  if (s === 'failed' || s === 'error') return { status: 'FAILED' };
   return { status: 'PENDING' };
 }
 
@@ -185,19 +201,19 @@ export async function pollHedra(taskId: string, apiKey: string): Promise<{ statu
 export async function submitVideoJob(
   product: Product,
   settings: AppSettings,
-  payload: { script: string; imageUrl: string; audioUrl?: string }
+  payload: { script: string; imageBase64: string; imageUrl: string; audioPath?: string; audioUrl?: string }
 ) {
   const provider = settings.videoProvider;
 
   let taskId: string;
 
   if (provider === 'kling') {
-    taskId = await submitKling(settings, payload.imageUrl, payload.script);
+    taskId = await submitKling(settings, payload.imageBase64, payload.script);
   } else if (provider === 'runway') {
     taskId = await submitRunway(settings, payload.imageUrl, payload.script);
   } else if (provider === 'hedra') {
-    if (!payload.audioUrl) throw new Error('Hedra requires a voiceover. Generate voiceover first.');
-    taskId = await submitHedra(settings, payload.imageUrl, payload.audioUrl);
+    if (!payload.audioPath) throw new Error('Hedra requires a voiceover. Generate voiceover first.');
+    taskId = await submitHedra(settings, payload.imageBase64, payload.audioPath);
   } else {
     throw new Error(`Unknown video provider: ${provider}. Choose kling, runway, or hedra.`);
   }

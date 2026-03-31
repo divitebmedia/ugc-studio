@@ -99,24 +99,28 @@ export default async function SettingsPage() {
               <div className="form-group">
                 <label className="form-label">Video provider</label>
                 <select name="videoProvider" defaultValue={s?.videoProvider || 'kling'} className="input">
-                  <option value="kling">Kling AI — image-to-video, natural motion (~$0.10/video)</option>
-                  <option value="runway">RunwayML Gen-3 — high quality image-to-video (~$0.25/video)</option>
-                  <option value="hedra">Hedra — talking head, lip-syncs to voiceover (requires voiceover step)</option>
+                  <option value="kling">Kling AI — image-to-video, natural motion (~$1.50/video)</option>
+                  <option value="hedra">Hedra — talking head, full lip sync to voiceover (~$0.29/video)</option>
+                  <option value="runway">RunwayML Gen-3 — high quality image-to-video (~$0.75/video)</option>
                 </select>
               </div>
+
               <div className="form-group">
-                <label className="form-label">API Key</label>
-                <input className="input" name="videoApiKey" type="password" defaultValue={s?.videoApiKey || ''} placeholder="Depends on provider below" />
-                <span className="form-hint">
-                  <strong>Kling:</strong> format is <code style={{ background: 'var(--bg)', padding: '1px 5px', borderRadius: 4 }}>accessKeyId:accessKeySecret</code> (get at klingai.com → API)<br />
-                  <strong>RunwayML:</strong> single API key (runwayml.com → Account → API Keys)<br />
-                  <strong>Hedra:</strong> single API key (hedra.com → Settings → API)
-                </span>
+                <label className="form-label">Kling API Key</label>
+                <input className="input" name="videoApiKey" type="password" defaultValue={s?.videoApiKey || ''} placeholder="accessKeyId:accessKeySecret" />
+                <span className="form-hint">Get at klingai.com → API. Format: <code style={{ background: 'var(--bg)', padding: '1px 5px', borderRadius: 4 }}>accessKeyId:accessKeySecret</code></span>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Model / version <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span></label>
-                <input className="input" name="videoModel" defaultValue={s?.videoModel || ''} placeholder="kling-v1-6 · gen3a_turbo · character-1" />
-                <span className="form-hint">Leave blank to use the default model for your provider</span>
+                <label className="form-label">Hedra API Key</label>
+                <input className="input" name="hedraApiKey" type="password" defaultValue={s?.hedraApiKey || ''} placeholder="sk_hedra_..." />
+                <span className="form-hint">Get at hedra.com → Settings → API. Recommended — full lip sync, ~$0.29/video on Creator plan.</span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Kling model <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span></label>
+                <input className="input" name="videoModel" defaultValue={s?.videoModel || ''} placeholder="kling-v2-1" />
+                <span className="form-hint">Only applies to Kling. Recommended: kling-v2-1 (better quality). Leave blank for default.</span>
               </div>
             </div>
           </div>

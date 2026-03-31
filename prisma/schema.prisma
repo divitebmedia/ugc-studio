@@ -53,6 +53,7 @@ model AppSettings {
   videoProvider      String   @default("kling")
   videoApiKey        String   @default("")
   videoModel         String   @default("kling-v1-6")
+  hedraApiKey        String   @default("")
   elevenLabsApiKey   String   @default("")
   voiceId            String   @default("21m00Tcm4TlvDq8ikWAM")
   createdAt          DateTime @default(now())

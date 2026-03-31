@@ -72,7 +72,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     } else if (job.provider === 'runway') {
       pollResult = await pollRunway(job.providerRef, settings.videoApiKey);
     } else if (job.provider === 'hedra') {
-      pollResult = await pollHedra(job.providerRef, settings.videoApiKey);
+      const hedraKey = (settings as typeof settings & { hedraApiKey?: string }).hedraApiKey || settings.videoApiKey;
+      pollResult = await pollHedra(job.providerRef, hedraKey);
     } else {
       return NextResponse.json({ status: 'PENDING', message: 'Unknown provider' });
     }

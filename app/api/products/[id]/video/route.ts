@@ -44,7 +44,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const result = await submitVideoJob(product, settings, {
       script,
-      imageUrl: imageBase64,
+      imageBase64,
+      imageUrl: toAbsolute(ugcImage?.url) || '',
+      audioPath: voiceAsset?.path ?? undefined,
       audioUrl: toAbsolute(voiceAsset?.url)
     });
     taskId = result.taskId;

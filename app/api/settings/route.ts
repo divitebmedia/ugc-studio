@@ -16,7 +16,8 @@ export async function POST(request: Request) {
     voiceId: String(form.get('voiceId') || '21m00Tcm4TlvDq8ikWAM'),
     videoProvider: String(form.get('videoProvider') || 'kling'),
     videoApiKey: String(form.get('videoApiKey') || ''),
-    videoModel: String(form.get('videoModel') || '')
+    videoModel: String(form.get('videoModel') || ''),
+    hedraApiKey: String(form.get('hedraApiKey') || '')
   };
 
   await prisma.appSettings.upsert({
