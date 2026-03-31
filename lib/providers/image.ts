@@ -16,7 +16,7 @@ Style: authentic user-generated content, slight motion blur, candid feel, not st
 Target: ${product.targetAudience}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${settings.textApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${settings.textApiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,7 @@ Target: ${product.targetAudience}`;
 
   return {
     provider: 'imagen3',
-    model: 'imagen-3.0-generate-002',
+    model: 'imagen-4.0-generate-001',
     filename,
     mimeType: 'image/png',
     path: filePath,
