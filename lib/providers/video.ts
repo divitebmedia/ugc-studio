@@ -33,7 +33,7 @@ async function submitKling(settings: AppSettings, imageUrl: string, script: stri
     cfg_scale: 0.5,
     mode: 'std',
     aspect_ratio: '9:16',
-    duration: '10'
+    duration: '5'
   };
 
   body.image = imageUrl;
