@@ -26,7 +26,7 @@ Rules:
 Output ONLY the spoken script. No stage directions, no labels, no extra text.`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.textApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${settings.textApiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,7 +46,7 @@ Output ONLY the spoken script. No stage directions, no labels, no extra text.`;
 
   return {
     provider: 'gemini',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.0-flash-001',
     script
   };
 }
