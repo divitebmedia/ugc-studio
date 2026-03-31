@@ -185,10 +185,12 @@ async function submitHedra(settings: AppSettings, imageBase64: string, audioPath
     method: 'POST',
     headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      type: 'video_with_audio',
-      portraitAssetId: imageAssetId,
-      audioAssetId: audioAssetId,
-      aspectRatio: '9:16'
+      type: 'video',
+      video: {
+        portraitAssetId: imageAssetId,
+        audioAssetId: audioAssetId,
+        aspectRatio: '9:16'
+      }
     })
   });
   if (!genRes.ok) throw new Error(`Hedra generate error ${genRes.status}: ${await genRes.text()}`);
