@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth';
 import { ensureAdminUser } from '@/lib/bootstrap';
 import { prisma } from '@/lib/prisma';
 import { AppNav } from '@/components/nav';
+import { VoicePicker } from '@/components/voice-picker';
 
 export default async function SettingsPage() {
   await requireAuth();
@@ -49,8 +50,8 @@ export default async function SettingsPage() {
             <div className="settings-section-header">
               <div className="settings-section-icon" style={{ background: 'rgba(78,222,214,0.12)' }}>✨</div>
               <div>
-                <h2 style={{ marginBottom: 0 }}>Google Gemini + Imagen 3</h2>
-                <p style={{ fontSize: 12, margin: 0 }}>Used for script generation (Gemini 2.0 Flash) and UGC image generation (Imagen 3)</p>
+                <h2 style={{ marginBottom: 0 }}>Google Gemini + Imagen 4</h2>
+                <p style={{ fontSize: 12, margin: 0 }}>Used for script generation (Gemini 2.5 Flash) and UGC image generation (Imagen 4)</p>
               </div>
             </div>
             <div className="settings-section-body">
@@ -61,7 +62,7 @@ export default async function SettingsPage() {
               </div>
               <div className="alert alert-info">
                 <span>ℹ</span>
-                <span>Imagen 3 generates a realistic UGC creator holding your product. Make sure Imagen API access is enabled on your Google AI project.</span>
+                <span>Imagen 4 generates a realistic UGC creator holding your product. Make sure Imagen API access is enabled on your Google AI project.</span>
               </div>
             </div>
           </div>
@@ -81,13 +82,7 @@ export default async function SettingsPage() {
                 <input className="input" name="elevenLabsApiKey" type="password" defaultValue={s?.elevenLabsApiKey || ''} placeholder="sk_..." />
                 <span className="form-hint">Get your key at <strong>elevenlabs.io</strong> → Profile → API Keys. Free plan gives 10,000 chars/month.</span>
               </div>
-              <div className="form-group">
-                <label className="form-label">Voice ID</label>
-                <input className="input" name="voiceId" defaultValue={s?.voiceId || '21m00Tcm4TlvDq8ikWAM'} placeholder="21m00Tcm4TlvDq8ikWAM" />
-                <span className="form-hint">
-                  Popular voices: <strong>Rachel</strong> = 21m00Tcm4TlvDq8ikWAM · <strong>Adam</strong> = pNInz6obpgDQGcFmaJgB · <strong>Bella</strong> = EXAVITQu4vr4xnSDxMaL. Find more at elevenlabs.io/voice-library
-                </span>
-              </div>
+              <VoicePicker defaultVoiceId={s?.voiceId || ''} />
             </div>
           </div>
 
