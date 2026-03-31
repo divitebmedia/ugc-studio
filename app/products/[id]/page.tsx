@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { AppNav } from '@/components/nav';
 import { formatDate } from '@/lib/utils';
 import { VideoPoller } from '@/components/video-poller';
+import { HedraVoicePicker } from '@/components/hedra-voice-picker';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
@@ -176,11 +177,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   )}
 
                   {!pendingVideoJob && (step2Done || step3Done) && (
-                    <form action={`/api/products/${product.id}/video`} method="post">
-                      <button type="submit" className="btn btn-primary btn-sm">
-                        {step4Done ? 'Regenerate video' : 'Generate video'}
-                      </button>
-                    </form>
+                    <>
+                      <HedraVoicePicker />
+                      <form action={`/api/products/${product.id}/video`} method="post" style={{ marginTop: 16 }}>
+                        <button type="submit" className="btn btn-primary btn-sm">
+                          {step4Done ? 'Regenerate video' : 'Generate video'}
+                        </button>
+                      </form>
+                    </>
                   )}
                   {!step2Done && !step3Done && <p style={{ fontSize: 12, color: 'var(--text-3)' }}>Generate image or voiceover first</p>}
                 </div>
