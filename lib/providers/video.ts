@@ -139,70 +139,71 @@ export async function pollRunway(taskId: string, apiKey: string): Promise<{ stat
 }
 
 // ── Hedra (talking head: image + audio → video) ───────────────────────────────
-const HEDRA_BASE = 'https://mercury.dev.dream-ai.com/api';
+const HEDRA_BASE = 'https://api.hedra.com/web-app/public';
+
+async function hedraCreateAsset(apiKey: string, type: 'image' | 'audio'): Promise<string> {
+  const res = await fetch(`${HEDRA_BASE}/assets`, {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type })
+  });
+  if (!res.ok) throw new Error(`Hedra create asset (${type}) error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.id as string;
+}
+
+async function hedraUploadAsset(apiKey: string, assetId: string, buffer: Buffer, filename: string, mime: string) {
+  const form = new FormData();
+  form.append('file', new Blob([buffer], { type: mime }), filename);
+  const res = await fetch(`${HEDRA_BASE}/assets/${assetId}/upload`, {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey },
+    body: form
+  });
+  if (!res.ok) throw new Error(`Hedra upload asset error ${res.status}: ${await res.text()}`);
+}
 
 async function submitHedra(settings: AppSettings, imageBase64: string, audioPath: string): Promise<string> {
   const apiKey = (settings as AppSettings & { hedraApiKey?: string }).hedraApiKey || settings.videoApiKey;
   if (!apiKey) throw new Error('Hedra API key not set. Add it in Settings → Hedra API Key.');
 
-  const authHeaders = { 'X-API-KEY': apiKey };
-
-  // 1. Upload portrait image as multipart form
   const { readFile } = await import('fs/promises');
+
+  // 1. Upload portrait image (two-step: create asset → upload file)
+  const imageAssetId = await hedraCreateAsset(apiKey, 'image');
   const imageBuffer = Buffer.from(imageBase64, 'base64');
+  await hedraUploadAsset(apiKey, imageAssetId, imageBuffer, 'portrait.png', 'image/png');
 
-  const imgForm = new FormData();
-  imgForm.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'portrait.png');
-
-  const imgRes = await fetch(`${HEDRA_BASE}/v1/portrait?aspect_ratio=9%3A16`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: imgForm
-  });
-  if (!imgRes.ok) throw new Error(`Hedra image upload error ${imgRes.status}: ${await imgRes.text()}`);
-  const imgData = await imgRes.json();
-  const portraitUrl: string = imgData.url;
-
-  // 2. Upload audio as multipart form
+  // 2. Upload audio (two-step: create asset → upload file)
+  const audioAssetId = await hedraCreateAsset(apiKey, 'audio');
   const audioBuffer = await readFile(audioPath);
-  const audForm = new FormData();
-  audForm.append('file', new Blob([audioBuffer], { type: 'audio/mpeg' }), 'voice.mp3');
-
-  const audRes = await fetch(`${HEDRA_BASE}/v1/audio`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: audForm
-  });
-  if (!audRes.ok) throw new Error(`Hedra audio upload error ${audRes.status}: ${await audRes.text()}`);
-  const audData = await audRes.json();
-  const audioUrl: string = audData.url;
+  await hedraUploadAsset(apiKey, audioAssetId, audioBuffer, 'voice.mp3', 'audio/mpeg');
 
   // 3. Generate talking head video
-  const genRes = await fetch(`${HEDRA_BASE}/v1/characters`, {
+  const genRes = await fetch(`${HEDRA_BASE}/generations`, {
     method: 'POST',
-    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+    headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      avatarImage: portraitUrl,
-      audioSource: 'audio',
-      voiceUrl: audioUrl,
+      portraitAssetId: imageAssetId,
+      audioAssetId: audioAssetId,
       aspectRatio: '9:16'
     })
   });
   if (!genRes.ok) throw new Error(`Hedra generate error ${genRes.status}: ${await genRes.text()}`);
   const genData = await genRes.json();
-  return (genData.jobId || genData.projectId || genData.id) as string;
+  return (genData.id || genData.generationId) as string;
 }
 
-export async function pollHedra(projectId: string, apiKey: string): Promise<{ status: string; videoUrl?: string; videoUrls?: string[] }> {
-  const res = await fetch(`${HEDRA_BASE}/v1/projects/${projectId}`, {
-    headers: { 'X-API-KEY': apiKey }
+export async function pollHedra(generationId: string, apiKey: string): Promise<{ status: string; videoUrl?: string; videoUrls?: string[] }> {
+  const res = await fetch(`${HEDRA_BASE}/generations/${generationId}/status`, {
+    headers: { 'X-API-Key': apiKey }
   });
 
   if (!res.ok) throw new Error(`Hedra poll error ${res.status}`);
   const data = await res.json();
-  const s = (data.status || '').toLowerCase();
+  const s = (data.status || data.state || '').toLowerCase();
 
-  if (s === 'completed') return { status: 'SUCCEEDED', videoUrl: data.videoUrl || data.video_url };
+  if (s === 'completed' || s === 'succeeded') return { status: 'SUCCEEDED', videoUrl: data.videoUrl || data.video_url || data.url };
   if (s === 'failed' || s === 'error') return { status: 'FAILED' };
   return { status: 'PENDING' };
 }
