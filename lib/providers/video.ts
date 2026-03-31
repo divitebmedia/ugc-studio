@@ -139,60 +139,70 @@ export async function pollRunway(taskId: string, apiKey: string): Promise<{ stat
 }
 
 // ── Hedra (talking head: image + audio → video) ───────────────────────────────
+const HEDRA_BASE = 'https://mercury.dev.dream-ai.com/api';
+
 async function submitHedra(settings: AppSettings, imageBase64: string, audioPath: string): Promise<string> {
   const apiKey = (settings as AppSettings & { hedraApiKey?: string }).hedraApiKey || settings.videoApiKey;
   if (!apiKey) throw new Error('Hedra API key not set. Add it in Settings → Hedra API Key.');
 
-  const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json' };
-  const base = 'https://api.hedra.com';
+  const authHeaders = { 'X-API-KEY': apiKey };
 
-  // 1. Upload image
-  const imgRes = await fetch(`${base}/v1/portrait`, {
+  // 1. Upload portrait image as multipart form
+  const { readFile } = await import('fs/promises');
+  const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+  const imgForm = new FormData();
+  imgForm.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'portrait.png');
+
+  const imgRes = await fetch(`${HEDRA_BASE}/v1/portrait?aspect_ratio=9%3A16`, {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ data: imageBase64 })
+    headers: authHeaders,
+    body: imgForm
   });
   if (!imgRes.ok) throw new Error(`Hedra image upload error ${imgRes.status}: ${await imgRes.text()}`);
-  const { id: portraitId } = await imgRes.json();
+  const imgData = await imgRes.json();
+  const portraitUrl: string = imgData.url;
 
-  // 2. Upload audio
-  const { readFile } = await import('fs/promises');
+  // 2. Upload audio as multipart form
   const audioBuffer = await readFile(audioPath);
-  const audioBase64 = audioBuffer.toString('base64');
+  const audForm = new FormData();
+  audForm.append('file', new Blob([audioBuffer], { type: 'audio/mpeg' }), 'voice.mp3');
 
-  const audRes = await fetch(`${base}/v1/audio`, {
+  const audRes = await fetch(`${HEDRA_BASE}/v1/audio`, {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ data: audioBase64 })
+    headers: authHeaders,
+    body: audForm
   });
   if (!audRes.ok) throw new Error(`Hedra audio upload error ${audRes.status}: ${await audRes.text()}`);
-  const { id: audioId } = await audRes.json();
+  const audData = await audRes.json();
+  const audioUrl: string = audData.url;
 
-  // 3. Create character video
-  const genRes = await fetch(`${base}/v1/characters`, {
+  // 3. Generate talking head video
+  const genRes = await fetch(`${HEDRA_BASE}/v1/characters`, {
     method: 'POST',
-    headers,
+    headers: { ...authHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      portrait_id: portraitId,
-      audio_id: audioId,
-      aspect_ratio: '9:16'
+      avatarImage: portraitUrl,
+      audioSource: 'audio',
+      voiceUrl: audioUrl,
+      aspectRatio: '9:16'
     })
   });
   if (!genRes.ok) throw new Error(`Hedra generate error ${genRes.status}: ${await genRes.text()}`);
-  const { id: jobId } = await genRes.json();
-  return jobId as string;
+  const genData = await genRes.json();
+  return (genData.jobId || genData.projectId || genData.id) as string;
 }
 
-export async function pollHedra(taskId: string, apiKey: string): Promise<{ status: string; videoUrl?: string; videoUrls?: string[] }> {
-  const res = await fetch(`https://api.hedra.com/v1/characters/${taskId}`, {
-    headers: { 'X-API-Key': apiKey }
+export async function pollHedra(projectId: string, apiKey: string): Promise<{ status: string; videoUrl?: string; videoUrls?: string[] }> {
+  const res = await fetch(`${HEDRA_BASE}/v1/projects/${projectId}`, {
+    headers: { 'X-API-KEY': apiKey }
   });
 
   if (!res.ok) throw new Error(`Hedra poll error ${res.status}`);
   const data = await res.json();
   const s = (data.status || '').toLowerCase();
 
-  if (s === 'completed') return { status: 'SUCCEEDED', videoUrl: data.video_url };
+  if (s === 'completed') return { status: 'SUCCEEDED', videoUrl: data.videoUrl || data.video_url };
   if (s === 'failed' || s === 'error') return { status: 'FAILED' };
   return { status: 'PENDING' };
 }
