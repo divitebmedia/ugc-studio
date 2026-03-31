@@ -6,3 +6,5 @@ prisma/*.db
 prisma/*.db-journal
 public/uploads/*
 !public/uploads/.gitkeep
+hedra-*.tgz
+package/
